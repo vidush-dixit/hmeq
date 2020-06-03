@@ -1,0 +1,9 @@
+Flask
+Flask-WTF
+scikit-learn
+scipy
+gunicorn
+numpy
+pandas
+matplotlib
+pickle
