@@ -1,11 +1,20 @@
+document.getElementById("chatToggle").addEventListener("click", function() {
+    var x = document.getElementById("chatWindow");
+    if ( x.classList.contains('d-none') ) {
+        x.classList.remove('d-none');
+    } else {
+        x.classList.add('d-none');
+    }
+});
+
 ( function ( document, window, index )
 {
     // feature detection for drag&drop upload
     var isAdvancedUpload = function()
-        {
-            var div = document.createElement( 'div' );
-            return ( ( 'draggable' in div ) || ( 'ondragstart' in div && 'ondrop' in div ) ) && 'FormData' in window && 'FileReader' in window;
-        }();
+    {
+        var div = document.createElement( 'div' );
+        return ( ( 'draggable' in div ) || ( 'ondragstart' in div && 'ondrop' in div ) ) && 'FormData' in window && 'FileReader' in window;
+    }();
 
     // applying the effect for every form
     var forms = document.querySelectorAll( '.box' );
@@ -71,11 +80,11 @@
                 triggerFormSubmit();
             });
         }
-
-
+        
         // if the form was submitted
         form.addEventListener( 'submit', function( e )
         {
+            var identity = form.getAttribute( 'id' );
             // preventing the duplicate submissions if the current one is in progress
             if( form.classList.contains( 'is-uploading' ) ) return false;
 
@@ -95,12 +104,17 @@
                     {
                         ajaxData.append( input.getAttribute( 'name' ), file );
                     });
+                    if( identity != 'newUserDataForm' )
+                    {
+                        var missingValuesOption = document.querySelector( '#fileForm input[name = "missingValuesOption"]:checked' );
+                        ajaxData.append( missingValuesOption.getAttribute( 'name' ), missingValuesOption.getAttribute( 'id' ) );
+                    }
                 }
                 
                 // ajax request
                 var ajax = new XMLHttpRequest();
                 ajax.open( form.getAttribute( 'method' ), form.getAttribute( 'action' ), true );
-                // ajax.responseType = "blob";
+                ajax.responseType = "blob";
 
                 ajax.onload = function()
                 {
@@ -108,7 +122,13 @@
 
                     if( ajax.status >= 200 && ajax.status < 400 )
                     {
-                        if( ajax.getResponseHeader('Content-Type') != 'application/json' )
+                        if( identity == 'newUserDataForm' )
+                        {
+                            var data = JSON.parse( ajax.responseText );
+							form.classList.add( data.success == true ? 'is-success' : 'is-error' );
+							if( !data.success ) errorMsg.textContent = JSON.parse(ajax.responseText).error;
+                        }
+                        else
                         {
                             var filename = "";
                             var disposition = ajax.getResponseHeader('Content-Disposition');
@@ -132,7 +152,7 @@
                                 var URL = window.URL || window.webkitURL;
                                 var downloadUrl = URL.createObjectURL(blob);
 
-                                if (filename)
+                                if ( filename )
                                 {
                                     // use HTML5 a[download] attribute to specify filename
                                     var a = document.createElement("a");
@@ -156,14 +176,13 @@
                                 setTimeout(function() { URL.revokeObjectURL(downloadUrl); }, 100); // cleanup
                             }
                             form.classList.add( 'is-success' );
-                        }   
-                        else
-                        {
-                            form.classList.add( 'is-error' );
-							errorMsg.textContent = JSON.parse(ajax.responseText).error;
                         }
                     }
-                    else alert( 'Error. Please, contact the webmaster!' );
+                    else
+                    {
+                        form.classList.add( 'is-error' );
+                        errorMsg.textContent = JSON.parse(ajax.responseText).error;
+                    }
                 };
 
                 ajax.onerror = function()
@@ -197,7 +216,6 @@
                 });
             }
         });
-
 
         // restart the form if has a state of error/success
         Array.prototype.forEach.call( restart, function( entry )
@@ -242,18 +260,32 @@
             if( ajax.status >= 200 && ajax.status < 400 )
             {
                 var data = JSON.parse(ajax.responseText);
+
                 if ( data.status === 'error' )
                 {
                     // alert('error');
+                    // Validation Errors Here
                     console.log( 'error' );
                 }
                 else
                 {
                     // alert('success');
-                    btnSubmit.insertAdjacentHTML( 
-                        'beforebegin',
-                        '<div class="alert alert-'+ data.resType+' mt-2 font-weight-bold">The Entered Loan Application looks  '+ data.result +'</div>'
-                    );
+                    var insightsArea = document.getElementById( 'singleRecordInsights' );
+                    insightsArea.classList.remove('d-none');
+
+                    var tableData = '<table class="table table-sm text-center"><thead class="thead-dark"><tr>';
+                    data.features.forEach( element => tableData += ('<th>'+element+'</th>') );
+                    tableData += '</tr></thead><tbody><tr>';
+                    data.values.forEach( element => tableData += ('<td>'+element+'</td>') );
+                    tableData += '</tr></tbody></table>';
+
+                    var appStatus = '<div class="alert alert-'+ data.resType+' mt-3 font-weight-bold w-100">The Entered Loan Application looks '+ data.category +'</div>';
+
+                    insightsArea.querySelector( '.card-body div.card-text' ).innerHTML = tableData;
+                    insightsArea.querySelector( '.card-body p.card-text' ).innerHTML = appStatus;
+
+                    insightsArea.querySelector( '.col-12.col-lg-4 img' ).src = 'data:image/png;base64,' + data.imgUrl;
+
                     singleEntryForm.reset();
                 }
             }

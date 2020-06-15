@@ -14,3 +14,4 @@ seaborn==0.10.1
 Werkzeug==1.0.1
 WTForms==2.3.1
 xgboost==1.1.0
+eli5==0.10.1
