@@ -123,8 +123,7 @@ def download_files( uploaded_files_df, fileOption ):
         s_buffer = StringIO()
         for fName, dataframe in uploaded_files_df.items():
             dataframe.to_csv(s_buffer, index=False)
-            filename = fName
-        filename = filename.rsplit('.', 1)[0]+'-'+ fileOption +'-new.csv'
+            filename = fName.rsplit('.', 1)[0]+'-'+ fileOption +'-new.csv'
         
         b_buffer = BytesIO()
         b_buffer.write(s_buffer.getvalue().encode('utf-8'))
