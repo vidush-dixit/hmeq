@@ -1,9 +1,101 @@
+window.onload = function() {
+    var theme = getCookie( 'theme' );
+    if( theme ){
+        var themeToggler = document.getElementById("web-theme-toggle");
+        if ( theme == 'light' ){themeToggler.checked = true;themeToggler.click();}
+        else{themeToggler.checked = false;themeToggler.click()}
+    }
+}
+
+function setCookie( name, value, daysToLive ) {
+    // Encode value in order to escape semicolons, commas, and whitespace
+    var cookie = name + "=" + encodeURIComponent(value);
+    
+    if(typeof daysToLive === "number") {
+        /* Sets the max-age attribute so that the cookie expires
+        after the specified number of days */
+        cookie += "; max-age=" + (daysToLive*24*60*60);
+        
+        document.cookie = cookie;
+    }
+}
+
+function getCookie( name ) {
+    // Split cookie string and get all individual name=value pairs in an array
+    var cookieArr = document.cookie.split(";");
+    
+    // Loop through the array elements
+    for(var i = 0; i < cookieArr.length; i++) {
+        var cookiePair = cookieArr[i].split("=");
+        
+        /* Removing whitespace at the beginning of the cookie name
+        and compare it with the given string */
+        if(name == cookiePair[0].trim()) {
+            // Decode the cookie value and return
+            return decodeURIComponent(cookiePair[1]);
+        }
+    }
+    
+    // Return null if not found
+    return null;
+}
+
 document.getElementById("chatToggle").addEventListener("click", function() {
     var x = document.getElementById("chatWindow");
     if ( x.classList.contains('d-none') ) {
         x.classList.remove('d-none');
     } else {
         x.classList.add('d-none');
+    }
+});
+
+document.getElementById("web-theme-toggle").addEventListener("change",function(){
+    var elems_dark = document.querySelectorAll('.theme-dark');
+    var elems_light = document.querySelectorAll('.theme-light');
+    var singleFormBtn = document.querySelector('#singleEntryForm button[type="submit"]');
+    
+    if( this.checked )
+    {
+        Array.prototype.forEach.call( elems_light, function( elem ){
+            elem.classList.remove( 'theme-light' );
+            elem.classList.add( 'theme-dark' );
+        });
+        Array.prototype.forEach.call( document.getElementsByClassName('navbar-light'), function( elem ){
+            elem.classList.add('navbar-dark');
+            elem.classList.remove('navbar-light');
+        });
+        Array.prototype.forEach.call( document.getElementsByTagName('hr'), function( elem ){
+            elem.classList.add('bg-white');
+            elem.classList.remove('bg-dark');
+        });
+        Array.prototype.forEach.call( document.querySelectorAll('nav .dropdown-item'), function( elem ){
+            elem.classList.add('text-white');
+        });
+        singleFormBtn.classList.remove('btn-light', 'btn-outline-dark');
+        singleFormBtn.classList.add('btn-dark');
+
+        setCookie('theme', 'dark', 30);
+    }
+    else
+    {
+        Array.prototype.forEach.call( elems_dark, function( elem ){
+            elem.classList.remove( 'theme-dark' );
+            elem.classList.add( 'theme-light' );
+        });
+        Array.prototype.forEach.call( document.getElementsByClassName('navbar-dark'), function( elem ){
+            elem.classList.add('navbar-light');
+            elem.classList.remove('navbar-dark');
+        });
+        Array.prototype.forEach.call( document.getElementsByTagName('hr'), function( elem ){
+            elem.classList.add('bg-dark');
+            elem.classList.remove('bg-white');
+        });
+        Array.prototype.forEach.call( document.querySelectorAll('nav .dropdown-item'), function( elem ){
+            elem.classList.remove('text-white');
+        });
+        singleFormBtn.classList.remove('btn-dark');
+        singleFormBtn.classList.add('btn-light', 'btn-outline-dark');
+        setCookie('theme', 'light', 30);
     }
 });
 

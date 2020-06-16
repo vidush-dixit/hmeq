@@ -1,3 +1,21 @@
+.theme-dark {
+    color: #fff !important;
+    background-color: #343a40 !important;
+}
+
+.theme-light {
+    color: #343a40 !important;
+    background-color: #fff !important; 
+}
+
+.disable-select {
+    user-select: none; /* supported by Chrome and Opera */
+   -webkit-user-select: none; /* Safari */
+   -khtml-user-select: none; /* Konqueror HTML */
+   -moz-user-select: none; /* Firefox */
+   -ms-user-select: none; /* Internet Explorer/Edge */
+}
+
 html, body {
   top: 0!;
   left: 0;
@@ -175,7 +193,7 @@ html, body {
 
 /* Button used to open the chat form - fixed at the bottom of the page */
 .chat-open-btn {
-    background-color: rgba(11, 0, 71, 0.185);
+    background-color: rgba(55, 69, 75, 0.788);
     padding: 0;
     border: none;
     cursor: pointer;
@@ -206,7 +224,7 @@ html, body {
     position: fixed;
     padding: 0;
     cursor: pointer;
-    background-color: rgba(66, 83, 83, 0.788);
+    background-color: rgba(55, 69, 75, 0.788);
     top: 80px;
     right: 0;
     z-index: 30;
@@ -241,7 +259,7 @@ html, body {
 .slider:before {
     position: absolute;
     content: "";
-    height: 20px;
+    height: 21px;
     width: 20px;
     left: 4px;
     bottom: 4px;
