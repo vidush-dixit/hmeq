@@ -99,7 +99,7 @@ def preProcessData(input_dataframe, newTraining_Data = False):
 
     return modified_dataframe
 
-def download_files( uploaded_files_df, fileOption ):
+def download_files( uploaded_files_df, fileOption = 'removeMissing' ):
     # if multiple files are there, zip and return files
     if len(uploaded_files_df) > 1:
         b_buffer = BytesIO()
@@ -110,7 +110,7 @@ def download_files( uploaded_files_df, fileOption ):
         b_buffer.seek(0)
         
         response = make_response(b_buffer.getvalue())
-        cd_headers = 'attachment; filename=csv-multiple-'+ fileOption +'.zip'
+        cd_headers = 'attachment; filename=csv-multiple-'+ str(fileOption) +'.zip'
         response.headers['Content-Disposition'] = cd_headers
         response.mimetype = 'zip'
         b_buffer.close()
@@ -123,7 +123,7 @@ def download_files( uploaded_files_df, fileOption ):
         s_buffer = StringIO()
         for fName, dataframe in uploaded_files_df.items():
             dataframe.to_csv(s_buffer, index=False)
-            filename = fName.rsplit('.', 1)[0]+'-'+ fileOption +'-new.csv'
+            filename = fName.rsplit('.', 1)[0]+'-'+ str(fileOption) +'-new.csv'
         
         b_buffer = BytesIO()
         b_buffer.write(s_buffer.getvalue().encode('utf-8'))
@@ -196,73 +196,76 @@ def home():
 
 @app.route('/analyse', methods = ['POST'])
 def analyse():
-    # store form input in dictionary
-    form_input = request.form.to_dict()
-    form_input = { k: None if not v else v for k, v in form_input.items() }
+    try:
+        # store form input in dictionary
+        form_input = request.form.to_dict()
+        form_input = { k: None if not v else v for k, v in form_input.items() }
 
-    # moving DEBTINC column to last
-    temp = form_input['DEBTINC']
-    form_input.pop('DEBTINC', None)
-    form_input['DEBTINC'] = temp
+        # moving DEBTINC column to last
+        temp = form_input['DEBTINC']
+        form_input.pop('DEBTINC', None)
+        form_input['DEBTINC'] = temp
 
-    int_columns = ['LOAN', 'YOJ', 'DEROG', 'DELINQ', 'NINQ', 'CLNO']
-    float_columns = ['MORTDUE', 'VALUE', 'CLAGE', 'DEBTINC']
-    
-    # converting form input dictionary to dataframe & calling function for preprocessing
-    dataframe_for_prediction = preProcessData( pd.DataFrame.from_dict( [form_input] ) )
-    
-    for i,v in dataframe_for_prediction.iloc[0].to_dict().items():
-        if i not in ['HOMEIMP', 'JOBIND']:
-            if i in int_columns:
-                form_input[i] = int(float(v))
-            if i in float_columns:
-                form_input[i] = round(float(v),3)
-        else:
-            if i == 'HOMEIMP':
-                if v == 1:
-                    form_input['REASON'] = 'HOMEIMP'
-                else:
-                    form_input['REASON'] = 'DEBTCON'
+        int_columns = ['LOAN', 'YOJ', 'DEROG', 'DELINQ', 'NINQ', 'CLNO']
+        float_columns = ['MORTDUE', 'VALUE', 'CLAGE', 'DEBTINC']
+        
+        # converting form input dictionary to dataframe & calling function for preprocessing
+        dataframe_for_prediction = preProcessData( pd.DataFrame.from_dict( [form_input] ) )
+        
+        for i,v in dataframe_for_prediction.iloc[0].to_dict().items():
+            if i not in ['HOMEIMP', 'JOBIND']:
+                if i in int_columns:
+                    form_input[i] = int(float(v))
+                if i in float_columns:
+                    form_input[i] = round(float(v),3)
             else:
-                job_frequency_dict = { 'Other': 0, 'ProfExe': 1, 'Office': 2, 'Mgr': 3, 'Self': 4, 'Sales': 5 }
-                form_input['JOB'] = list(job_frequency_dict.keys())[list(job_frequency_dict.values()).index(v)]
-    
-    # converting processed dataframe to np-array to feed it to model for prediction
-    processed_input = dataframe_for_prediction.iloc[:,:].values
-    temp_result = model.predict(processed_input)[0]
+                if i == 'HOMEIMP':
+                    if v == 1:
+                        form_input['REASON'] = 'HOMEIMP'
+                    else:
+                        form_input['REASON'] = 'DEBTCON'
+                else:
+                    job_frequency_dict = { 'Other': 0, 'ProfExe': 1, 'Office': 2, 'Mgr': 3, 'Self': 4, 'Sales': 5 }
+                    form_input['JOB'] = list(job_frequency_dict.keys())[list(job_frequency_dict.values()).index(v)]
+        
+        # converting processed dataframe to np-array to feed it to model for prediction
+        processed_input = dataframe_for_prediction.iloc[:,:].values
+        temp_result = model.predict(processed_input)[0]
 
-    explained_pred = eli5.explain_prediction_df(estimator=model, doc=dataframe_for_prediction.iloc[0])
-    explained_pred = explained_pred[explained_pred.feature != '<BIAS>'].reset_index( drop=True )
-    # print( explained_pred )
-    explained_pred = explained_pred.iloc[:6]
-    
-    plt.figure( figsize = (12,6) )
-    sns.barplot( x='weight', y='feature', data = explained_pred )
-    plt.title("Top Features", fontsize = 30, loc = 'center', pad=10,
-            fontdict = { 'family': 'serif', 'color': 'darkred', 'weight': 'normal', 'size': 25 })
-    plt.xlabel('Importance',
-            fontdict = { 'family': 'serif', 'color': 'darkred', 'weight': 'normal', 'size': 16 })
-    plt.ylabel('Features',
-            fontdict = { 'family': 'serif', 'color': 'darkred', 'weight': 'normal', 'size': 16 })
-    plt.tick_params( labelsize=12 )
-    
-    img_buffer = BytesIO()
-    plt.savefig( img_buffer, format='png', bbox_inches='tight', pad_inches = 0)
-    plt.close()
-    img_buffer.seek(0)
-    plot_url = base64.b64encode( img_buffer.getvalue() ).decode('utf-8')
+        explained_pred = eli5.explain_prediction_df(estimator=model, doc=dataframe_for_prediction.iloc[0])
+        explained_pred = explained_pred[explained_pred.feature != '<BIAS>'].reset_index( drop=True )
+        # print( explained_pred )
+        explained_pred = explained_pred.iloc[:6]
+        
+        plt.figure( figsize = (12,6) )
+        sns.barplot( x='weight', y='feature', data = explained_pred )
+        plt.title("Top Features", fontsize = 30, loc = 'center', pad=10,
+                fontdict = { 'family': 'serif', 'color': 'darkred', 'weight': 'normal', 'size': 25 })
+        plt.xlabel('Importance',
+                fontdict = { 'family': 'serif', 'color': 'darkred', 'weight': 'normal', 'size': 16 })
+        plt.ylabel('Features',
+                fontdict = { 'family': 'serif', 'color': 'darkred', 'weight': 'normal', 'size': 16 })
+        plt.tick_params( labelsize=12 )
+        
+        img_buffer = BytesIO()
+        plt.savefig( img_buffer, format='png', bbox_inches='tight', pad_inches = 0)
+        plt.close()
+        img_buffer.seek(0)
+        plot_url = base64.b64encode( img_buffer.getvalue() ).decode('utf-8')
 
-    if( temp_result ):
-        category = 'GOOD'
-        resType = 'success'
+        if( temp_result ):
+            category = 'GOOD'
+            resType = 'success'
+        else:
+            category = 'BAD'
+            resType = 'warning'
+        
+        features    = [ str(i) for i in form_input.keys() ] 
+        values      = [ str(i) for i in form_input.values() ]
+    except Exception as e:
+        return jsonify( status='success', error = 'Something went wrong!! Contact Webmaster' )
     else:
-        category = 'BAD'
-        resType = 'warning'
-    
-    features    = [ str(i) for i in form_input.keys() ] 
-    values      = [ str(i) for i in form_input.values() ]
-    
-    return jsonify( status='success', category=category, features=features, values=values, resType=resType, imgUrl=plot_url )
+        return jsonify( status='success', category=category, features=features, values=values, resType=resType, imgUrl=plot_url )
 
 @app.route('/analyse_file', methods = ['POST'])
 def analyse_file():

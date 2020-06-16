@@ -39,9 +39,12 @@ document.getElementById("chatToggle").addEventListener("click", function() {
         // automatically submit the form on file select
         input.addEventListener( 'change', function( e )
         {
-            showFiles( e.target.files );
+            if ( e.target.files.length != '' )
+            {
+                showFiles( e.target.files );
 
-            triggerFormSubmit();		
+                triggerFormSubmit();
+            }
         });
 
         // drag&drop files if the feature is available
@@ -97,6 +100,13 @@ document.getElementById("chatToggle").addEventListener("click", function() {
 
                 // creating new form
                 var ajaxData = new FormData();
+                if ( input.files.length != 0 )
+                {
+                    Array.prototype.forEach.call( input.files, function( file )
+                    {
+                        ajaxData.append( input.getAttribute( 'name' ), file );
+                    });
+                }
                 // gathering the form data
                 if( droppedFiles )
                 {
@@ -104,11 +114,11 @@ document.getElementById("chatToggle").addEventListener("click", function() {
                     {
                         ajaxData.append( input.getAttribute( 'name' ), file );
                     });
-                    if( identity != 'newUserDataForm' )
-                    {
-                        var missingValuesOption = document.querySelector( '#fileForm input[name = "missingValuesOption"]:checked' );
-                        ajaxData.append( missingValuesOption.getAttribute( 'name' ), missingValuesOption.getAttribute( 'id' ) );
-                    }
+                }
+                if( identity != 'newUserDataForm' )
+                {
+                    var missingValuesOption = document.querySelector( '#fileForm input[name = "missingValuesOption"]:checked' );
+                    ajaxData.append( missingValuesOption.getAttribute( 'name' ), missingValuesOption.getAttribute( 'id' ) );
                 }
                 
                 // ajax request
@@ -140,6 +150,7 @@ document.getElementById("chatToggle").addEventListener("click", function() {
                             }
                             
                             var type = ajax.getResponseHeader('Content-Type');
+                            
                             var blob = new Blob([this.response], { type: type });
 
                             if (typeof window.navigator.msSaveBlob !== 'undefined')
@@ -164,6 +175,7 @@ document.getElementById("chatToggle").addEventListener("click", function() {
                                     else
                                     {
                                         a.href = downloadUrl;
+                                        a.target = '_blank';
                                         a.download = filename;
                                         document.body.appendChild(a);
                                         a.click();
@@ -208,8 +220,9 @@ document.getElementById("chatToggle").addEventListener("click", function() {
                 iframe.addEventListener( 'load', function()
                 {
                     form.classList.remove( 'is-uploading' );
-                    var data = JSON.parse( iframe.contentDocument.body.innerHTML );
-                    form.classList.add( data.success == true ? 'is-success' : 'is-error' );
+                    var data = iframe.contentDocument.body.innerHTML || iframe.contentWindow.document.body.innerHTML;
+                    
+                    form.classList.add( data.success ? 'is-success' : 'is-error' );
                     form.removeAttribute( 'target' );
                     if( !data.success ) errorMsg.textContent = data.error;
                     iframe.parentNode.removeChild( iframe );
@@ -263,9 +276,13 @@ document.getElementById("chatToggle").addEventListener("click", function() {
 
                 if ( data.status === 'error' )
                 {
-                    // alert('error');
                     // Validation Errors Here
-                    console.log( 'error' );
+                    // console.log( 'error' );
+                    btnSubmit.insertAdjacentHTML( 
+                        'beforebegin',
+                        '<div class="alert alert-'+ data.status +' mt-2 font-weight-bold">The Entered Loan Application looks  '+ data.error +'</div>'
+                    );
+                    singleEntryForm.reset();
                 }
                 else
                 {
