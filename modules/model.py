@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 def model_init():
-    print('Initializing Model...')
+#     print('Initializing Model...')
     extVars_data = []
 
     main_df = pd.read_csv('./dataset/hmeq.csv')
@@ -107,4 +107,4 @@ def model_init():
     print('Accuracy: ', (accu_score*100).round(5),'%')
     #=========== 9. End Accuracy check ===============
 
-    print('Model initialization successfully...')
+#     print('Model initialization successfully...')
