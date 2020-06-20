@@ -372,7 +372,7 @@ document.getElementById("web-theme-toggle").addEventListener("change",function()
                     // console.log( 'error' );
                     btnSubmit.insertAdjacentHTML( 
                         'beforebegin',
-                        '<div class="alert alert-'+ data.status +' mt-2 font-weight-bold">The Entered Loan Application looks  '+ data.error +'</div>'
+                        '<div class="alert alert-danger mt-2 font-weight-bold">'+ data.error +'</div>'
                     );
                     singleEntryForm.reset();
                 }

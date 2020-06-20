@@ -1,5 +1,4 @@
 # ======================================= Importing Libraries ======================================
-import pickle
 import numpy as np
 import random
 from statistics import mode
@@ -17,6 +16,10 @@ import seaborn as sns
 
 from flask import Flask, request, jsonify, redirect, url_for, render_template, send_file, make_response
 from werkzeug.utils import secure_filename
+
+from os import path
+import pickle
+from modules.model import *
 #======================================= End Import Libraries ======================================
 
 #======================================= App & Configurations ======================================
@@ -25,9 +28,17 @@ app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
 #===================================== End App & Configurations ====================================
 
 #===================================== Reading Trained Model File ==================================
-pckFile = open( 'extVars.pkl', 'rb' )
-mean_dict, median_dict, mode_dict, model = pickle.load( pckFile )
-pckFile.close()
+if path.exists("extVars.pkl"):
+    print('Model Found!!')
+    print('Opening Trained Model...')
+    with open("extVars.pkl", "rb") as pckFile:
+        mean_dict, median_dict, mode_dict, model = pickle.load( pckFile )
+else:
+    print('Model not found!!')
+    print('Training Model...')
+    model_init()
+    with open("extVars.pkl", "rb") as pckFile:
+        mean_dict, median_dict, mode_dict, model = pickle.load( pckFile )
 #================================== End Reading Trained Model File =================================
 
 #===================================== User Defined Functions ======================================
@@ -143,7 +154,7 @@ def download_files( uploaded_files_df, fileOption = 'removeMissing' ):
 
 @app.route('/')
 def home():
-    df = pd.read_csv('hmeq.csv')
+    df = pd.read_csv('./dataset/hmeq.csv')
     df.dropna( inplace=True )
     df["BAD"] = ["BAD" if i == 1 else "GOOD" for i in df["BAD"]]
     df["CLTV"] = (df["LOAN"] +df["MORTDUE"]) / df["VALUE"]
@@ -206,11 +217,23 @@ def analyse():
         form_input.pop('DEBTINC', None)
         form_input['DEBTINC'] = temp
 
-        int_columns = ['LOAN', 'YOJ', 'DEROG', 'DELINQ', 'NINQ', 'CLNO']
-        float_columns = ['MORTDUE', 'VALUE', 'CLAGE', 'DEBTINC']
-        
         # converting form input dictionary to dataframe & calling function for preprocessing
         dataframe_for_prediction = preProcessData( pd.DataFrame.from_dict( [form_input] ) )
+        # converting processed dataframe to np-array to feed it to model for prediction
+        processed_input = dataframe_for_prediction.iloc[:,:].values
+        
+        temp_result = model.predict(processed_input)[0]
+        
+        if( temp_result == 0 ):
+            category = 'GOOD'
+            resType = 'success'
+        else:
+            category = 'BAD'
+            resType = 'warning'
+
+        # converting data to send to view in tabular format
+        int_columns = ['LOAN', 'YOJ', 'DEROG', 'DELINQ', 'NINQ', 'CLNO']
+        float_columns = ['MORTDUE', 'VALUE', 'CLAGE', 'DEBTINC']
         
         for i,v in dataframe_for_prediction.iloc[0].to_dict().items():
             if i not in ['HOMEIMP', 'JOBIND']:
@@ -228,10 +251,7 @@ def analyse():
                     job_frequency_dict = { 'Other': 0, 'ProfExe': 1, 'Office': 2, 'Mgr': 3, 'Self': 4, 'Sales': 5 }
                     form_input['JOB'] = list(job_frequency_dict.keys())[list(job_frequency_dict.values()).index(v)]
         
-        # converting processed dataframe to np-array to feed it to model for prediction
-        processed_input = dataframe_for_prediction.iloc[:,:].values
-        temp_result = model.predict(processed_input)[0]
-
+        # Predicting Feature Importance based on weightage (eli5 library)
         explained_pred = eli5.explain_prediction_df(estimator=model, doc=dataframe_for_prediction.iloc[0])
         explained_pred = explained_pred[explained_pred.feature != '<BIAS>'].reset_index( drop=True )
         # print( explained_pred )
@@ -247,23 +267,17 @@ def analyse():
                 fontdict = { 'family': 'serif', 'color': 'darkred', 'weight': 'normal', 'size': 16 })
         plt.tick_params( labelsize=12 )
         
+        # Saving Feature Importance Bar Plot to img and sending to view
         img_buffer = BytesIO()
-        plt.savefig( img_buffer, format='png', bbox_inches='tight', pad_inches = 0)
+        plt.savefig( img_buffer, format='png', bbox_inches='tight', pad_inches = 0 )
         plt.close()
         img_buffer.seek(0)
         plot_url = base64.b64encode( img_buffer.getvalue() ).decode('utf-8')
-
-        if( temp_result == 0 ):
-            category = 'GOOD'
-            resType = 'success'
-        else:
-            category = 'BAD'
-            resType = 'warning'
         
         features    = [ str(i) for i in form_input.keys() ] 
         values      = [ str(i) for i in form_input.values() ]
-    except Exception as e:
-        return jsonify( status='success', error = 'Something went wrong!! Contact Webmaster' )
+    except:
+        return jsonify( status='error', error = 'Something went wrong!! Contact Webmaster' )
     else:
         return jsonify( status='success', category=category, features=features, values=values, resType=resType, imgUrl=plot_url )
 
@@ -316,7 +330,7 @@ def retrain_model():
         try:
             model.n_estimators += 5
             model.fit( X, Y.ravel() )
-        except Exception as e:
+        except:
             return jsonify( success = False, error = 'Something went wrong! Try Again' )
 
         extVars_data = [ mean_dict, median_dict, mode_dict, model ]
