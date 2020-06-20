@@ -29,13 +29,13 @@ app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
 
 #===================================== Reading Trained Model File ==================================
 if path.exists("extVars.pkl"):
-    print('Model Found!!')
-    print('Opening Trained Model...')
+#     print('Model Found!!')
+#     print('Opening Trained Model...')
     with open("extVars.pkl", "rb") as pckFile:
         mean_dict, median_dict, mode_dict, model = pickle.load( pckFile )
 else:
-    print('Model not found!!')
-    print('Training Model...')
+#     print('Model not found!!')
+#     print('Training Model...')
     model_init()
     with open("extVars.pkl", "rb") as pckFile:
         mean_dict, median_dict, mode_dict, model = pickle.load( pckFile )
